@@ -9,30 +9,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from TABLICE.ParametryBetonu import get_concrete_params
 
-@dataclass
-class WynikZakotwienia:
-    l_b_rqd_mm: float
-    L_bd_mm: float
-    L_b_min_mm: float
-    L_req_mm: float
-    alfa: float
-    fi_mm: float
-    klasa_betonu: str
-    fyk_MPa: float
-    procent_naprezenia: float
-    eta1: float
-    eta2: float
-    alfa1: float
-    alfa2: float
-    alfa3: float
-    alfa4: float
-    alfa5: float
-    f_bd_MPa: float
-    sigma_sd_MPa: float
-    f_yd_MPa: float
-    fctd_MPa: float
-
-
 def _pobierz_parametry_betonu(klasa_betonu: str) -> dict:
     params = get_concrete_params(klasa_betonu)
     fctm = params.fctm
@@ -70,13 +46,11 @@ def ObliczDlugoscZakotwienia(
     sigma_sd = (procent_naprezenia / 100.0) * f_yd
 
     # 2. Podstawowa długość zakotwienia l_b,rqd
-    # ZMIANA: Obliczenie eta2
     if fi_mm <= 32:
         eta2 = 1.0
     else:
         eta2 = (132 - fi_mm) / 100.0
 
-    # ZMIANA: Wzór na f_bd z eta2
     f_bd = 2.25 * eta1 * eta2 * fctd
     
     if f_bd > 0:
@@ -84,8 +58,19 @@ def ObliczDlugoscZakotwienia(
     else:
         l_b_rqd_mm = 0.0
 
-    # 3. Współczynnik alfa globalny
-    alfa = alfa1 * alfa2 * alfa3 * alfa4 * alfa5
+    # 3. Współczynnik alfa globalny z limitem 0.7
+    # PN-EN 1992-1-1 p. 8.4.4 (1): iloczyn a2*a3*a5 >= 0.7
+    iloczyn_235_raw = alfa2 * alfa3 * alfa5
+    limit_active = False
+    
+    if iloczyn_235_raw < 0.7:
+        iloczyn_235_eff = 0.7
+        limit_active = True
+    else:
+        iloczyn_235_eff = iloczyn_235_raw
+
+    # Alfa globalna = a1 * (a2*a3*a5)_eff * a4
+    alfa = alfa1 * iloczyn_235_eff * alfa4
 
     # 4. Obliczeniowa długość zakotwienia l_bd
     L_bd_mm = alfa * l_b_rqd_mm
@@ -111,7 +96,7 @@ def ObliczDlugoscZakotwienia(
         "fyk_MPa": fyk_MPa,
         "procent_naprezenia": procent_naprezenia,
         "eta1": eta1,
-        "eta2": eta2, # Dodano
+        "eta2": eta2,
         "alfa1": alfa1,
         "alfa2": alfa2,
         "alfa3": alfa3,
@@ -121,4 +106,8 @@ def ObliczDlugoscZakotwienia(
         "sigma_sd_MPa": sigma_sd,
         "f_yd_MPa": f_yd,
         "fctd_MPa": fctd,
+        # Dodatkowe pola do raportowania
+        "iloczyn_235_raw": iloczyn_235_raw,
+        "iloczyn_235_eff": iloczyn_235_eff,
+        "limit_active": limit_active
     }

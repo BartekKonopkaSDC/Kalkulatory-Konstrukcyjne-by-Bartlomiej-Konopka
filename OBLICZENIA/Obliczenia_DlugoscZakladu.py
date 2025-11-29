@@ -9,14 +9,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from TABLICE.ParametryBetonu import get_concrete_params
 
-@dataclass
-class WynikZakladu:
-    l_b_rqd_mm: float
-    L0_mm: float
-    L0_min_mm: float
-    L_z_mm: float
-
-
 def _pobierz_parametry_betonu(klasa_betonu: str) -> dict:
     params = get_concrete_params(klasa_betonu)
     fctm = params.fctm
@@ -58,13 +50,11 @@ def ObliczDlugoscZakladu(
     sigma_sd = (procent_naprezenia / 100.0) * f_yd
 
     # 2. Podstawowa długość zakotwienia l_b,rqd
-    # ZMIANA: Obliczenie eta2
     if fi_mm <= 32:
         eta2 = 1.0
     else:
         eta2 = (132 - fi_mm) / 100.0
         
-    # ZMIANA: Wzór na f_bd z eta2
     f_bd = 2.25 * eta1 * eta2 * fctd
     
     if f_bd > 0:
@@ -72,8 +62,19 @@ def ObliczDlugoscZakladu(
     else:
         l_b_rqd_mm = 0.0
 
-    # 3. Współczynnik α (łączny)
-    alfa = alfa1 * alfa2 * alfa3 * alfa4 * alfa5 * alfa6
+    # 3. Współczynnik α (łączny) z limitem 0.7
+    # Norma EC2 8.4.4(1): a2 * a3 * a5 >= 0.7
+    iloczyn_235_raw = alfa2 * alfa3 * alfa5
+    limit_active = False
+
+    if iloczyn_235_raw < 0.7:
+        iloczyn_235_eff = 0.7
+        limit_active = True
+    else:
+        iloczyn_235_eff = iloczyn_235_raw
+
+    # Alfa globalna = a1 * (a2*a3*a5)_eff * a4 * a6
+    alfa = alfa1 * iloczyn_235_eff * alfa4 * alfa6
 
     # 4. Podstawowa długość zakładu L0 (EC2 8.7)
     L0_mm = alfa * l_b_rqd_mm
@@ -94,7 +95,7 @@ def ObliczDlugoscZakladu(
         "fyk_MPa": fyk_MPa,
         "procent_naprezenia": procent_naprezenia,
         "eta1": eta1,
-        "eta2": eta2,  # Dodano do wyników
+        "eta2": eta2,
         "wsp_cd": wsp_cd,
         "alfa1": alfa1,
         "alfa2": alfa2,
@@ -111,4 +112,8 @@ def ObliczDlugoscZakladu(
         "L0_mm": L0_mm,
         "L0_min_mm": L0_min_mm,
         "L_z_mm": L_z_mm,
+        # Dodatkowe do raportu
+        "iloczyn_235_raw": iloczyn_235_raw,
+        "iloczyn_235_eff": iloczyn_235_eff,
+        "limit_active": limit_active
     }
