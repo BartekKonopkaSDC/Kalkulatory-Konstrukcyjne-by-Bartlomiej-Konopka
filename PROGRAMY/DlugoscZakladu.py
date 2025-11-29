@@ -3,9 +3,7 @@ PROGRAMY/DlugoscZakladu.py
 
 Strona Streamlit do obliczania długości zakładu prętów zbrojeniowych
 wg PN-EN 1992-1-1 (EC2).
-Wersja: ENGINEERING_REPORT_V15 (Explicit Eta2 Line).
-Zmiany:
-- W sekcji 2 (Raport PDF, DOCX, Expander) dodano jawną linię z wartością eta2.
+Wersja: ENGINEERING_REPORT_V17 (FIXED FONTS & ENCODING).
 """
 
 from __future__ import annotations
@@ -29,6 +27,8 @@ from TABLICE.ParametryStali import get_steel_params, list_steel_grades
 
 SCIEZKA_BAZOWA = Path(__file__).resolve().parents[1]
 SCIEZKA_DODATKI = SCIEZKA_BAZOWA / "DODATKI"
+# --- FIX: Definiujemy ścieżkę do folderu z czcionką ---
+SCIEZKA_PROGRAMY = Path(__file__).parent 
 
 # --- SYMBOLE UNICODE DLA PDF ---
 SYM = {
@@ -51,19 +51,16 @@ def create_pdf_report(wynik: dict, inputs: dict) -> bytes:
     pdf = FPDF()
     pdf.add_page()
     
-    font_name = 'Times' 
-    try:
-        pdf.add_font(font_name, '', r"C:\Windows\Fonts\times.ttf", uni=True)
-        pdf.add_font(font_name, 'B', r"C:\Windows\Fonts\timesbd.ttf", uni=True) 
-        pdf.add_font(font_name, 'I', r"C:\Windows\Fonts\timesi.ttf", uni=True) 
-        main_font = font_name
-    except:
-        try:
-            pdf.add_font('ArialMT', '', r"C:\Windows\Fonts\arial.ttf", uni=True)
-            pdf.add_font('ArialMT', 'B', r"C:\Windows\Fonts\arialbd.ttf", uni=True)
-            main_font = 'ArialMT'
-        except:
-            main_font = 'Arial'
+    # --- FIX: NAPRAWA CZCIONEK (Linux/Streamlit Cloud) ---
+    font_path = SCIEZKA_PROGRAMY / "DejaVuSans.ttf"
+    
+    if font_path.exists():
+        pdf.add_font('DejaVu', '', str(font_path), uni=True)
+        pdf.add_font('DejaVu', 'B', str(font_path), uni=True)
+        pdf.add_font('DejaVu', 'I', str(font_path), uni=True)
+        main_font = 'DejaVu'
+    else:
+        main_font = 'Arial'
 
     LINE_H = 6
     MARGIN_LEFT = 15
@@ -172,7 +169,8 @@ def create_pdf_report(wynik: dict, inputs: dict) -> bytes:
     pdf.set_y(pdf.get_y() + 3)
     build_line([("Wymagana długość zakładu:  l", 'txt'), ("0,req", 'sub'), (f" = {wynik['L_z_mm']:.1f} mm", 'bold')], MARGIN_LEFT + 5)
 
-    return pdf.output(dest='S').encode('latin-1')
+    # --- FIX: ZABEZPIECZENIE PRZED BŁĘDEM KODOWANIA ---
+    return pdf.output(dest='S').encode('latin-1', 'replace')
 
 
 # =============================================================================

@@ -3,10 +3,7 @@ PROGRAMY/DlugoscZakotwienia.py
 
 Strona Streamlit do obliczania długości ZAKOTWIENIA prętów zbrojeniowych
 wg PN-EN 1992-1-1 (EC2).
-Wersja: ENGINEERING_REPORT_V16 (FIX NameError val_min1).
-Zmiany:
-- Naprawiono błąd 'val_min1 is not defined' w sekcji szczegółów na stronie.
-- Dodano brakujące obliczenia pośrednie w bloku expandera.
+Wersja: ENGINEERING_REPORT_V17 (FIXED FONTS & ENCODING).
 """
 
 from __future__ import annotations
@@ -30,6 +27,8 @@ from TABLICE.ParametryStali import get_steel_params, list_steel_grades
 
 SCIEZKA_BAZOWA = Path(__file__).resolve().parents[1]
 SCIEZKA_DODATKI = SCIEZKA_BAZOWA / "DODATKI"
+# --- FIX: Definiujemy ścieżkę do folderu, w którym jest ten skrypt i czcionka ---
+SCIEZKA_PROGRAMY = Path(__file__).parent 
 
 # --- SYMBOLE UNICODE DLA PDF ---
 SYM = {
@@ -52,19 +51,19 @@ def create_pdf_report(wynik: dict, inputs: dict) -> bytes:
     pdf = FPDF()
     pdf.add_page()
     
-    font_name = 'Times' 
-    try:
-        pdf.add_font(font_name, '', r"C:\Windows\Fonts\times.ttf", uni=True)
-        pdf.add_font(font_name, 'B', r"C:\Windows\Fonts\timesbd.ttf", uni=True) 
-        pdf.add_font(font_name, 'I', r"C:\Windows\Fonts\timesi.ttf", uni=True) 
-        main_font = font_name
-    except:
-        try:
-            pdf.add_font('ArialMT', '', r"C:\Windows\Fonts\arial.ttf", uni=True)
-            pdf.add_font('ArialMT', 'B', r"C:\Windows\Fonts\arialbd.ttf", uni=True)
-            main_font = 'ArialMT'
-        except:
-            main_font = 'Arial'
+    # --- FIX: NAPRAWA CZCIONEK (Linux/Streamlit Cloud) ---
+    # Szukamy pliku DejaVuSans.ttf w tym samym folderze co ten skrypt
+    font_path = SCIEZKA_PROGRAMY / "DejaVuSans.ttf"
+    
+    if font_path.exists():
+        # Rejestrujemy czcionkę z obsługą Unicode (uni=True)
+        pdf.add_font('DejaVu', '', str(font_path), uni=True)
+        pdf.add_font('DejaVu', 'B', str(font_path), uni=True) # Używamy tej samej jako Bold (symulacja)
+        pdf.add_font('DejaVu', 'I', str(font_path), uni=True) # Używamy tej samej jako Italic (symulacja)
+        main_font = 'DejaVu'
+    else:
+        # Fallback - jeśli nie wgrałeś pliku .ttf, użyje Ariala (ale polskie znaki mogą nie działać)
+        main_font = 'Arial'
 
     LINE_H = 6
     MARGIN_LEFT = 15
@@ -168,7 +167,9 @@ def create_pdf_report(wynik: dict, inputs: dict) -> bytes:
     pdf.set_y(pdf.get_y() + 3)
     build_line([("Wymagana długość zakotwienia:  l", 'txt'), ("bd,req", 'sub'), (f" = {wynik['L_req_mm']:.1f} mm", 'bold')], MARGIN_LEFT + 5)
 
-    return pdf.output(dest='S').encode('latin-1')
+    # --- FIX: ZABEZPIECZENIE PRZED BŁĘDEM KODOWANIA ---
+    # Używamy 'replace', aby zamienić nieznane znaki na '?' zamiast wyrzucać błąd
+    return pdf.output(dest='S').encode('latin-1', 'replace')
 
 
 # =============================================================================
@@ -456,10 +457,8 @@ def StronaDlugoscZakotwienia() -> None:
                 
                 st.markdown("#### 2. Podstawowa długość zakotwienia ($l_{b,rqd}$)")
                 st.write(f"- Warunki przyczepności: **{warunki}** ($\eta_1 = {eta1}$)")
-                # ZMIANA: Dodano wyświetlenie eta2
                 st.write(f"- Współczynnik średnicy: $\eta_2 = {wynik['eta2']:.2f}$")
                 st.write(f"- Przyczepność graniczna $f_{{bd}}$:")
-                # ZMIANA: Dodano eta2 do wzoru
                 st.latex(rf"f_{{bd}} = 2.25 \cdot \eta_1 \cdot \eta_2 \cdot f_{{ctd}} = 2.25 \cdot {eta1} \cdot {wynik['eta2']:.2f} \cdot {f_ctd_val:.2f} = \mathbf{{{f_bd_val:.2f} \text{{ MPa}}}}")
                 st.latex(rf"l_{{b,rqd}} = \frac{{\Phi}}{{4}} \cdot \frac{{\sigma_{{sd}}}}{{f_{{bd}}}} = \frac{{{fi_mm}}}{{4}} \cdot \frac{{{sigma_sd_val:.1f}}}{{{f_bd_val:.2f}}} = \mathbf{{{l_b_rqd_mm:.1f} \text{{ mm}}}}")
 
@@ -472,7 +471,6 @@ def StronaDlugoscZakotwienia() -> None:
                 st.latex(rf"\alpha_{{global}} = \alpha_1 \cdot \alpha_2 \cdot \alpha_3 \cdot \alpha_4 \cdot \alpha_5 = \mathbf{{{wynik['alfa']:.3f}}}")
 
                 st.markdown("#### 4. Minimalna długość zakotwienia ($l_{b,min}$)")
-                # ZMIANA: Naprawiono błąd z brakującymi zmiennymi val_min
                 val_min1 = 0.3 * l_b_rqd_mm
                 val_min2 = 10.0 * fi_mm
                 st.latex(rf"l_{{b,min}} = \max(0.3 \cdot l_{{b,rqd}}; 10\Phi; 100) = \max({val_min1:.1f}; {val_min2:.1f}; 100) = {L_b_min_mm:.1f} \text{{ mm}}")
