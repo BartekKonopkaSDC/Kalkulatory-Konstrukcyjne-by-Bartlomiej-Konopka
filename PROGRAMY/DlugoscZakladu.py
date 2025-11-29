@@ -1,9 +1,6 @@
 """
 PROGRAMY/DlugoscZakladu.py
-
-Strona Streamlit do obliczania długości zakładu prętów zbrojeniowych
-wg PN-EN 1992-1-1 (EC2).
-Wersja: ENGINEERING_REPORT_V17 (FIXED FONTS & ENCODING).
+Wersja: ENGINEERING_REPORT_V18 (BOLD FONT SUPPORT).
 """
 
 from __future__ import annotations
@@ -11,8 +8,6 @@ from __future__ import annotations
 import streamlit as st
 from pathlib import Path
 from io import BytesIO
-
-# Biblioteki do PDF
 from fpdf import FPDF
 
 # Biblioteki do DOCX
@@ -27,20 +22,11 @@ from TABLICE.ParametryStali import get_steel_params, list_steel_grades
 
 SCIEZKA_BAZOWA = Path(__file__).resolve().parents[1]
 SCIEZKA_DODATKI = SCIEZKA_BAZOWA / "DODATKI"
-# --- FIX: Definiujemy ścieżkę do folderu z czcionką ---
 SCIEZKA_PROGRAMY = Path(__file__).parent 
 
-# --- SYMBOLE UNICODE DLA PDF ---
 SYM = {
-    "fi": "\u03A6",      # Fi duze
-    "alpha": "\u03B1",   # alfa
-    "sigma": "\u03C3",   # sigma
-    "eta": "\u03B7",     # eta
-    "rho": "\u03C1",     # rho
-    "dot": "\u00B7",     # kropka mnozenia
-    "bullet": "\u2022",  # punktor
-    "ge": "\u2265",      # wieksze rowne
-    "le": "\u2264"       # mniejsze rowne
+    "fi": "\u03A6", "alpha": "\u03B1", "sigma": "\u03C3", "eta": "\u03B7",
+    "rho": "\u03C1", "dot": "\u00B7", "bullet": "\u2022", "ge": "\u2265", "le": "\u2264"
 }
 
 # =============================================================================
@@ -51,13 +37,23 @@ def create_pdf_report(wynik: dict, inputs: dict) -> bytes:
     pdf = FPDF()
     pdf.add_page()
     
-    # --- FIX: NAPRAWA CZCIONEK (Linux/Streamlit Cloud) ---
-    font_path = SCIEZKA_PROGRAMY / "DejaVuSans.ttf"
+    # --- KONFIGURACJA CZCIONEK (REGULAR + BOLD) ---
+    font_regular = SCIEZKA_PROGRAMY / "DejaVuSans.ttf"
+    font_bold = SCIEZKA_PROGRAMY / "DejaVuSans-Bold.ttf"
     
-    if font_path.exists():
-        pdf.add_font('DejaVu', '', str(font_path), uni=True)
-        pdf.add_font('DejaVu', 'B', str(font_path), uni=True)
-        pdf.add_font('DejaVu', 'I', str(font_path), uni=True)
+    if font_regular.exists():
+        # 1. Rejestrujemy zwykłą
+        pdf.add_font('DejaVu', '', str(font_regular), uni=True)
+        
+        # 2. Rejestrujemy pogrubioną (jeśli plik istnieje)
+        if font_bold.exists():
+            pdf.add_font('DejaVu', 'B', str(font_bold), uni=True)
+        else:
+            pdf.add_font('DejaVu', 'B', str(font_regular), uni=True)
+            
+        # 3. Kursywa
+        pdf.add_font('DejaVu', 'I', str(font_regular), uni=True)
+        
         main_font = 'DejaVu'
     else:
         main_font = 'Arial'
@@ -109,7 +105,7 @@ def create_pdf_report(wynik: dict, inputs: dict) -> bytes:
             elif type_ == 'sym': w_txt(text)
         new_line()
 
-    # --- NAGŁÓWEK ---
+    # --- TREŚĆ RAPORTU ---
     pdf.set_font(main_font, 'B', 14)
     pdf.cell(0, 8, "OBLICZENIE DŁUGOŚCI ZAKŁADU PRĘTÓW ZBROJENIOWYCH", ln=True, align='C')
     pdf.set_font(main_font, '', 10)
@@ -167,9 +163,9 @@ def create_pdf_report(wynik: dict, inputs: dict) -> bytes:
     pdf.set_fill_color(240, 240, 240)
     pdf.rect(MARGIN_LEFT, pdf.get_y(), 180, 12, 'F')
     pdf.set_y(pdf.get_y() + 3)
+    # POGRUBIENIE WYNIKU
     build_line([("Wymagana długość zakładu:  l", 'txt'), ("0,req", 'sub'), (f" = {wynik['L_z_mm']:.1f} mm", 'bold')], MARGIN_LEFT + 5)
 
-    # --- FIX: ZABEZPIECZENIE PRZED BŁĘDEM KODOWANIA ---
     return pdf.output(dest='S').encode('latin-1', 'replace')
 
 
