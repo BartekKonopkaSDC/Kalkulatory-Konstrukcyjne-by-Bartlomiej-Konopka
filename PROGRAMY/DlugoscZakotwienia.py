@@ -1,6 +1,6 @@
 """
 PROGRAMY/DlugoscZakotwienia.py
-Wersja: ENGINEERING_REPORT_V18 (BOLD FONT SUPPORT).
+Wersja: ENGINEERING_REPORT_V20 (FULL).
 """
 
 from __future__ import annotations
@@ -8,6 +8,8 @@ from __future__ import annotations
 import streamlit as st
 from pathlib import Path
 from io import BytesIO
+
+# Biblioteki do PDF
 from fpdf import FPDF
 
 # Biblioteki do DOCX
@@ -24,9 +26,11 @@ SCIEZKA_BAZOWA = Path(__file__).resolve().parents[1]
 SCIEZKA_DODATKI = SCIEZKA_BAZOWA / "DODATKI"
 SCIEZKA_PROGRAMY = Path(__file__).parent 
 
+# --- SYMBOLE UNICODE DLA PDF ---
 SYM = {
     "fi": "\u03A6", "alpha": "\u03B1", "sigma": "\u03C3", "eta": "\u03B7",
-    "rho": "\u03C1", "dot": "\u00B7", "bullet": "\u2022", "ge": "\u2265", "le": "\u2264"
+    "rho": "\u03C1", "dot": "\u00B7", "bullet": "\u2022", "ge": "\u2265", "le": "\u2264",
+    "ra": "\u2192"
 }
 
 # =============================================================================
@@ -42,19 +46,12 @@ def create_pdf_report(wynik: dict, inputs: dict) -> bytes:
     font_bold = SCIEZKA_PROGRAMY / "DejaVuSans-Bold.ttf"
     
     if font_regular.exists():
-        # 1. Rejestrujemy zwykłą czcionkę
         pdf.add_font('DejaVu', '', str(font_regular), uni=True)
-        
-        # 2. Rejestrujemy pogrubioną (jeśli plik istnieje)
         if font_bold.exists():
             pdf.add_font('DejaVu', 'B', str(font_bold), uni=True)
         else:
-            # Fallback: jeśli brak pliku Bold, używamy Regular (symulacja)
             pdf.add_font('DejaVu', 'B', str(font_regular), uni=True)
-            
-        # 3. Kursywa (symulowana z Regular, chyba że masz plik Oblique)
         pdf.add_font('DejaVu', 'I', str(font_regular), uni=True)
-        
         main_font = 'DejaVu'
     else:
         main_font = 'Arial'
@@ -95,7 +92,6 @@ def create_pdf_report(wynik: dict, inputs: dict) -> bytes:
     def build_line(segments, indent=0):
         if indent > 0:
             pdf.set_x(indent)
-        
         for item in segments:
             text = item[0]
             type_ = item[1]
@@ -106,7 +102,7 @@ def create_pdf_report(wynik: dict, inputs: dict) -> bytes:
             elif type_ == 'sym': w_txt(text)
         new_line()
 
-    # --- TREŚĆ RAPORTU ---
+    # --- NAGŁÓWEK ---
     pdf.set_font(main_font, 'B', 14)
     pdf.cell(0, 8, "OBLICZENIE DŁUGOŚCI ZAKOTWIENIA PRĘTÓW ZBROJENIOWYCH", ln=True, align='C')
     pdf.set_font(main_font, '', 10)
@@ -141,6 +137,16 @@ def create_pdf_report(wynik: dict, inputs: dict) -> bytes:
     for i in indices:
         val = wynik[f'alfa{i}']
         build_line([(SYM['alpha'], 'italic'), (str(i), 'sub'), (f" = {val:.2f}", 'txt')], X_EQ)
+    
+    # WARUNEK 0.7
+    pdf.ln(1)
+    if wynik.get('limit_active', False):
+        txt_warunek = f"{wynik['iloczyn_235_raw']:.2f} < 0.7 {SYM['ra']} przyjeto 0.7"
+        build_line([("Warunek 8.4.4(1): ", 'bold'), (SYM['alpha'], 'italic'), ("2", 'sub'), (f"{SYM['dot']}", 'txt'), (SYM['alpha'], 'italic'), ("3", 'sub'), (f"{SYM['dot']}", 'txt'), (SYM['alpha'], 'italic'), ("5", 'sub'), (f" = {txt_warunek}", 'txt')], X_EQ)
+    else:
+        txt_warunek = f"{wynik['iloczyn_235_raw']:.2f} {SYM['ge']} 0.7 (OK)"
+        build_line([("Warunek 8.4.4(1): ", 'txt'), (SYM['alpha'], 'italic'), ("2", 'sub'), (f"{SYM['dot']}", 'txt'), (SYM['alpha'], 'italic'), ("3", 'sub'), (f"{SYM['dot']}", 'txt'), (SYM['alpha'], 'italic'), ("5", 'sub'), (f" = {txt_warunek}", 'txt')], X_EQ)
+
     pdf.ln(2)
     build_line([(SYM['alpha'], 'italic'), ("glob", 'sub'), (" = ", 'txt'), (SYM['alpha'], 'italic'), ("1", 'sub'), (f" {SYM['dot']} ", 'txt'), (SYM['alpha'], 'italic'), ("2", 'sub'), (f" {SYM['dot']} ", 'txt'), (SYM['alpha'], 'italic'), ("3", 'sub'), (f" {SYM['dot']} ", 'txt'), (SYM['alpha'], 'italic'), ("4", 'sub'), (f" {SYM['dot']} ", 'txt'), (SYM['alpha'], 'italic'), ("5", 'sub'), (" = ", 'txt'), (f"{wynik['alfa']:.3f}", 'txt')], X_EQ)
 
@@ -159,7 +165,8 @@ def create_pdf_report(wynik: dict, inputs: dict) -> bytes:
     pdf.set_fill_color(240, 240, 240)
     pdf.rect(MARGIN_LEFT, pdf.get_y(), 180, 12, 'F')
     pdf.set_y(pdf.get_y() + 3)
-    # POGRUBIENIE WYNIKU UŻYWA TERAZ 'DejaVuSans-Bold.ttf'
+    
+    # POGRUBIENIE WYNIKU CZCIONKĄ BOLD
     build_line([("Wymagana długość zakotwienia:  l", 'txt'), ("bd,req", 'sub'), (f" = {wynik['L_req_mm']:.1f} mm", 'bold')], MARGIN_LEFT + 5)
 
     return pdf.output(dest='S').encode('latin-1', 'replace')
@@ -441,7 +448,7 @@ def StronaDlugoscZakotwienia() -> None:
             
             st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
 
-            with st.expander("📄 Pokaż szczegółowy raport z obliczeń (Podgląd)", expanded=False):
+            with st.expander("📄 Szczegółowy raport z obliczeń", expanded=False):
                 st.markdown("#### 1. Parametry materiałowe")
                 st.write(f"- Średnica pręta: **Φ = {fi_mm} mm**")
                 st.write(f"- Beton: **{klasa_betonu}** ($f_{{ctd}} = {f_ctd_val:.2f}$ MPa)")
@@ -461,6 +468,17 @@ def StronaDlugoscZakotwienia() -> None:
                 st.write(f"- $\\alpha_3 = {wynik['alfa3']:.2f}$")
                 st.write(f"- $\\alpha_4 = {wynik['alfa4']:.2f}$")
                 st.write(f"- $\\alpha_5 = {wynik['alfa5']:.2f}$")
+                
+                # --- NOWOŚĆ: Wyświetlanie limitu 0.7 ---
+                st.write("---")
+                iloczyn = wynik['iloczyn_235_raw']
+                if wynik['limit_active']:
+                    st.error(f"⚠️ Warunek EC2 8.4.4(1): $\\alpha_2 \\cdot \\alpha_3 \\cdot \\alpha_5 = {iloczyn:.3f} < 0.7$")
+                    st.latex(r"\rightarrow \text{Przyjęto: } \alpha_2 \cdot \alpha_3 \cdot \alpha_5 = 0.7")
+                else:
+                    st.success(f"✅ Warunek EC2 8.4.4(1): $\\alpha_2 \\cdot \\alpha_3 \\cdot \\alpha_5 = {iloczyn:.3f} \ge 0.7$")
+                st.write("---")
+
                 st.latex(rf"\alpha_{{global}} = \alpha_1 \cdot \alpha_2 \cdot \alpha_3 \cdot \alpha_4 \cdot \alpha_5 = \mathbf{{{wynik['alfa']:.3f}}}")
 
                 st.markdown("#### 4. Minimalna długość zakotwienia ($l_{b,min}$)")
