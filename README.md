@@ -28,21 +28,6 @@ Projekt został zrealizowany w języku **Python** z wykorzystaniem bibliotek:
 * **FPDF** - generowanie raportów PDF z obsługą polskich znaków i symboli matematycznych.
 * **python-docx** - generowanie edytowalnych raportów Word.
 
-## 💻 Jak uruchomić lokalnie?
-
-1.  Sklonuj repozytorium:
-    ```bash
-    git clone [https://github.com/BartekKonopkaSDC/Kalkulatory-Konstrukcyjne-by-Bartlomiej-Konopka.git](https://github.com/BartekKonopkaSDC/Kalkulatory-Konstrukcyjne-by-Bartlomiej-Konopka.git)
-    ```
-2.  Zainstaluj wymagane biblioteki:
-    ```bash
-    pip install -r requirements.txt
-    ```
-3.  Uruchom aplikację:
-    ```bash
-    streamlit run Aplikacja.py
-    ```
-
 ## 🌐 Wersja Online
 
 Aplikacja jest dostępna online pod adresem:
