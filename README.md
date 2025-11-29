@@ -31,8 +31,7 @@ Projekt został zrealizowany w języku **Python** z wykorzystaniem bibliotek:
 ## 🌐 Wersja Online
 
 Aplikacja jest dostępna online pod adresem:
-[Link do Twojej aplikacji na Streamlit Cloud] 
-*(Tutaj wkleisz link, jak już uruchomimy chmurę)*
+https://kalkulatory-konstrukcyjne-by-bartlomiej-konopka-dnxb2tu5uappzm.streamlit.app/
 
 ---
 **Autor:** Bartłomiej Konopka
