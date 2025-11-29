@@ -1,6 +1,6 @@
 """
 PROGRAMY/DlugoscZakladu.py
-Wersja: ENGINEERING_REPORT_V20 (FULL).
+Wersja: ENGINEERING_REPORT_V21 (UNITS FIXED + HIDE OK).
 """
 
 from __future__ import annotations
@@ -140,22 +140,20 @@ def create_pdf_report(wynik: dict, inputs: dict) -> bytes:
         if desc: segments.extend([(desc, 'txt'), ("1", 'sub'), (f" = {inputs['procent_lacz']}%)", 'txt')])
         build_line(segments, X_EQ)
 
-    # WARUNEK 0.7
-    pdf.ln(1)
+    # WARUNEK 0.7 - ZMIANA: TYLKO JEŚLI NIESPEŁNIONY
     if wynik.get('limit_active', False):
+        pdf.ln(1)
         txt_warunek = f"{wynik['iloczyn_235_raw']:.2f} < 0.7 {SYM['ra']} przyjeto 0.7"
         build_line([("Warunek 8.4.4(1): ", 'bold'), (SYM['alpha'], 'italic'), ("2", 'sub'), (f"{SYM['dot']}", 'txt'), (SYM['alpha'], 'italic'), ("3", 'sub'), (f"{SYM['dot']}", 'txt'), (SYM['alpha'], 'italic'), ("5", 'sub'), (f" = {txt_warunek}", 'txt')], X_EQ)
-    else:
-        txt_warunek = f"{wynik['iloczyn_235_raw']:.2f} {SYM['ge']} 0.7 (OK)"
-        build_line([("Warunek 8.4.4(1): ", 'txt'), (SYM['alpha'], 'italic'), ("2", 'sub'), (f"{SYM['dot']}", 'txt'), (SYM['alpha'], 'italic'), ("3", 'sub'), (f"{SYM['dot']}", 'txt'), (SYM['alpha'], 'italic'), ("5", 'sub'), (f" = {txt_warunek}", 'txt')], X_EQ)
 
     pdf.ln(2)
     build_line([(SYM['alpha'], 'italic'), ("glob", 'sub'), (" = ", 'txt'), (SYM['alpha'], 'italic'), ("1", 'sub'), (f" {SYM['dot']} ", 'txt'), (SYM['alpha'], 'italic'), ("2", 'sub'), (f" {SYM['dot']} ", 'txt'), (SYM['alpha'], 'italic'), ("3", 'sub'), (f" {SYM['dot']} ", 'txt'), (SYM['alpha'], 'italic'), ("5", 'sub'), (f" {SYM['dot']} ", 'txt'), (SYM['alpha'], 'italic'), ("6", 'sub'), (" = ", 'txt'), (f"{wynik['alfa']:.3f}", 'txt')], X_EQ)
 
-    # 4. MINIMALNA
+    # 4. MINIMALNA - ZMIANA: DODANO JEDNOSTKI MM
     header_sec("4. Minimalna długość zakładu")
     val1, val2, val3 = 0.3 * wynik['alfa6'] * wynik['l_b_rqd_mm'], 15 * wynik['fi_mm'], 200
     build_line([("l", 'italic'), ("0,min", 'sub'), (f" = max(0.3{SYM['alpha']}", 'txt'), ("6", 'sub'), ("l", 'txt'), ("b,rqd", 'sub'), (f"; 15{SYM['fi']}; 200 mm)", 'txt')], X_EQ)
+    # Dodano 'mm' po wartościach w max()
     build_line([("      = max(", 'txt'), (f"{val1:.1f} mm; {val2:.1f} mm; {val3} mm", 'txt'), (") = ", 'txt'), (f"{wynik['L0_min_mm']:.1f} mm", 'txt')], X_EQ)
 
     # 5. WYNIK
@@ -220,7 +218,6 @@ def create_docx_report(wynik: dict, inputs: dict) -> BytesIO:
 
     doc.add_heading("2. Podstawowa długość zakotwienia", level=1)
     p = add_p(1.0); run_txt(p, f"Warunki przyczepności: {inputs['warunki']}")
-    # ZMIANA: Dodano eta2
     p = add_p(1.0); run_txt(p, "Współczynnik średnicy: "); run_txt(p, SYM['eta'], italic=True); run_sub(p, "2"); run_txt(p, f" = {wynik['eta2']:.2f}")
     
     p = add_p(1.5, space_after=6)
@@ -234,13 +231,18 @@ def create_docx_report(wynik: dict, inputs: dict) -> BytesIO:
         p = add_p(1.5, space_after=0)
         run_txt(p, SYM['alpha'], italic=True); run_sub(p, str(i)); run_txt(p, f" = {wynik[f'alfa{i}']:.2f}")
         if i == 6: run_txt(p, f" ({SYM['rho']}"); run_sub(p, "1"); run_txt(p, f" = {inputs['procent_lacz']}%)")
+    
     p = add_p(1.5, space_after=6)
     p.paragraph_format.space_before = Pt(6)
     run_txt(p, SYM['alpha'], italic=True); run_sub(p, "glob"); run_txt(p, " = "); run_txt(p, SYM['alpha'], italic=True); run_sub(p, "1"); run_txt(p, f" {SYM['dot']} "); run_txt(p, SYM['alpha'], italic=True); run_sub(p, "2"); run_txt(p, f" {SYM['dot']} "); run_txt(p, SYM['alpha'], italic=True); run_sub(p, "3"); run_txt(p, f" {SYM['dot']} "); run_txt(p, SYM['alpha'], italic=True); run_sub(p, "5"); run_txt(p, f" {SYM['dot']} "); run_txt(p, SYM['alpha'], italic=True); run_sub(p, "6"); run_txt(p, f" = {wynik['alfa']:.3f}")
 
     doc.add_heading("4. Minimalna długość zakładu", level=1)
     p = add_p(1.5, space_after=6)
-    run_txt(p, "l", italic=True); run_sub(p, "0,min"); run_txt(p, f" = max(0.3{SYM['alpha']}"); run_sub(p, "6"); run_txt(p, "l"); run_sub(p, "b,rqd"); run_txt(p, f"; 15{SYM['fi']}; 200 mm) = "); run_txt(p, f"{wynik['L0_min_mm']:.1f} mm")
+    run_txt(p, "l", italic=True); run_sub(p, "0,min"); run_txt(p, f" = max(0.3{SYM['alpha']}"); run_sub(p, "6"); run_txt(p, "l"); run_sub(p, "b,rqd"); run_txt(p, f"; 15{SYM['fi']}; 200 mm) = "); 
+    # ZMIANA: DODANO JEDNOSTKI DO DOCX
+    val1, val2, val3 = 0.3 * wynik['alfa6'] * wynik['l_b_rqd_mm'], 15 * wynik['fi_mm'], 200
+    run_txt(p, f"max({val1:.1f} mm; {val2:.1f} mm; {val3} mm) = ")
+    run_txt(p, f"{wynik['L0_min_mm']:.1f} mm")
 
     doc.add_heading("5. Obliczenie długości zakładu", level=1)
     p = add_p(1.5, space_after=6)
@@ -458,9 +460,9 @@ def StronaDlugoscZakladu() -> None:
                 
                 st.markdown("#### 2. Podstawowa długość zakotwienia ($l_{b,rqd}$)")
                 st.write(f"- Warunki przyczepności: **{warunki}** ($\eta_1 = {eta1}$)")
-                st.write(f"- Współczynnik średnicy: $\eta_2 = {wynik['eta2']:.2f}$") # ZMIANA: Dodano eta2
+                st.write(f"- Współczynnik średnicy: $\eta_2 = {wynik['eta2']:.2f}$")
                 st.write(f"- Przyczepność graniczna $f_{{bd}}$:")
-                # ZMIANA: Dodano eta2 do wzoru
+                
                 st.latex(rf"f_{{bd}} = 2.25 \cdot \eta_1 \cdot \eta_2 \cdot f_{{ctd}} = 2.25 \cdot {eta1} \cdot {wynik['eta2']} \cdot {f_ctd_val:.2f} = \mathbf{{{f_bd_val:.2f} \text{{ MPa}}}}")
                 st.latex(rf"l_{{b,rqd}} = \frac{{\Phi}}{{4}} \cdot \frac{{\sigma_{{sd}}}}{{f_{{bd}}}} = \frac{{{fi_mm}}}{{4}} \cdot \frac{{{sigma_sd_val:.1f}}}{{{f_bd_val:.2f}}} = \mathbf{{{l_b_rqd_mm:.1f} \text{{ mm}}}}")
 
@@ -471,22 +473,21 @@ def StronaDlugoscZakladu() -> None:
                 st.write(f"- $\\alpha_5 = {wynik['alfa5']:.2f}$")
                 st.write(f"- $\\alpha_6 = {wynik['alfa6']:.2f}$ ($\\rho_1 = {procent_lacz}\%$)")
                 
-                # --- NOWOŚĆ: Wyświetlanie limitu 0.7 ---
-                st.write("---")
-                iloczyn = wynik['iloczyn_235_raw']
+                # --- ZMIANA: Ukrywanie komunikatu jeśli OK ---
                 if wynik['limit_active']:
+                    st.write("---")
+                    iloczyn = wynik['iloczyn_235_raw']
                     st.error(f"⚠️ Warunek EC2 8.4.4(1): $\\alpha_2 \\cdot \\alpha_3 \\cdot \\alpha_5 = {iloczyn:.3f} < 0.7$")
                     st.latex(r"\rightarrow \text{Przyjęto: } \alpha_2 \cdot \alpha_3 \cdot \alpha_5 = 0.7")
-                else:
-                    st.success(f"✅ Warunek EC2 8.4.4(1): $\\alpha_2 \\cdot \\alpha_3 \\cdot \\alpha_5 = {iloczyn:.3f} \ge 0.7$")
-                st.write("---")
+                    st.write("---")
 
                 st.latex(rf"\alpha_{{global}} = \alpha_1 \cdot \alpha_2 \cdot \alpha_3 \cdot \alpha_5 \cdot \alpha_6 = \mathbf{{{alfa_glob:.3f}}}")
 
                 st.markdown("#### 4. Minimalna długość zakładu ($l_{0,min}$)")
                 val_min1 = 0.3 * alfa6 * l_b_rqd_mm
                 val_min2 = 15 * fi_mm
-                st.latex(rf"l_{{0,min}} = \max(0.3 \cdot \alpha_6 \cdot l_{{b,rqd}}; 15\Phi; 200) = \max({val_min1:.1f}; {val_min2:.1f}; 200) = {L0_min_mm:.1f} \text{{ mm}}")
+                # ZMIANA: Dodano \text{ mm} do latexu
+                st.latex(rf"l_{{0,min}} = \max(0.3 \cdot \alpha_6 \cdot l_{{b,rqd}}; 15\Phi; 200) = \max({val_min1:.1f} \text{{ mm}}; {val_min2:.1f} \text{{ mm}}; 200 \text{{ mm}}) = {L0_min_mm:.1f} \text{{ mm}}")
 
                 st.markdown("#### 5. Obliczenie długości zakładu ($l_0$)")
                 st.latex(rf"l_0 = \alpha_{{global}} \cdot l_{{b,rqd}} = {alfa_glob:.3f} \cdot {l_b_rqd_mm:.1f} = {L0_mm:.1f} \text{{ mm}}")

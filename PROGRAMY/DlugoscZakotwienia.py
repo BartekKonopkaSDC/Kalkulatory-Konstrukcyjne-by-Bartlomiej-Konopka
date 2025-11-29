@@ -1,6 +1,6 @@
 """
 PROGRAMY/DlugoscZakotwienia.py
-Wersja: ENGINEERING_REPORT_V20 (FULL).
+Wersja: ENGINEERING_REPORT_V21 (UNITS FIXED + HIDE OK).
 """
 
 from __future__ import annotations
@@ -138,22 +138,20 @@ def create_pdf_report(wynik: dict, inputs: dict) -> bytes:
         val = wynik[f'alfa{i}']
         build_line([(SYM['alpha'], 'italic'), (str(i), 'sub'), (f" = {val:.2f}", 'txt')], X_EQ)
     
-    # WARUNEK 0.7
-    pdf.ln(1)
+    # WARUNEK 0.7 - ZMIANA: TYLKO JEŚLI NIESPEŁNIONY
     if wynik.get('limit_active', False):
+        pdf.ln(1)
         txt_warunek = f"{wynik['iloczyn_235_raw']:.2f} < 0.7 {SYM['ra']} przyjeto 0.7"
         build_line([("Warunek 8.4.4(1): ", 'bold'), (SYM['alpha'], 'italic'), ("2", 'sub'), (f"{SYM['dot']}", 'txt'), (SYM['alpha'], 'italic'), ("3", 'sub'), (f"{SYM['dot']}", 'txt'), (SYM['alpha'], 'italic'), ("5", 'sub'), (f" = {txt_warunek}", 'txt')], X_EQ)
-    else:
-        txt_warunek = f"{wynik['iloczyn_235_raw']:.2f} {SYM['ge']} 0.7 (OK)"
-        build_line([("Warunek 8.4.4(1): ", 'txt'), (SYM['alpha'], 'italic'), ("2", 'sub'), (f"{SYM['dot']}", 'txt'), (SYM['alpha'], 'italic'), ("3", 'sub'), (f"{SYM['dot']}", 'txt'), (SYM['alpha'], 'italic'), ("5", 'sub'), (f" = {txt_warunek}", 'txt')], X_EQ)
-
+    
     pdf.ln(2)
     build_line([(SYM['alpha'], 'italic'), ("glob", 'sub'), (" = ", 'txt'), (SYM['alpha'], 'italic'), ("1", 'sub'), (f" {SYM['dot']} ", 'txt'), (SYM['alpha'], 'italic'), ("2", 'sub'), (f" {SYM['dot']} ", 'txt'), (SYM['alpha'], 'italic'), ("3", 'sub'), (f" {SYM['dot']} ", 'txt'), (SYM['alpha'], 'italic'), ("4", 'sub'), (f" {SYM['dot']} ", 'txt'), (SYM['alpha'], 'italic'), ("5", 'sub'), (" = ", 'txt'), (f"{wynik['alfa']:.3f}", 'txt')], X_EQ)
 
-    # 4. MINIMALNA
+    # 4. MINIMALNA - ZMIANA: DODANO JEDNOSTKI MM
     header_sec("4. Minimalna długość zakotwienia")
     val1, val2, val3 = 0.3 * wynik['l_b_rqd_mm'], 10.0 * wynik['fi_mm'], 100.0
     build_line([("l", 'italic'), ("b,min", 'sub'), (" = max(0.3l", 'txt'), ("b,rqd", 'sub'), (f"; 10{SYM['fi']}; 100 mm)", 'txt')], X_EQ)
+    # Dodano 'mm' po wartościach w max()
     build_line([("      = max(", 'txt'), (f"{val1:.1f} mm; {val2:.1f} mm; {val3} mm", 'txt'), (") = ", 'txt'), (f"{wynik['L_b_min_mm']:.1f} mm", 'txt')], X_EQ)
 
     # 5. WYNIK
@@ -231,13 +229,24 @@ def create_docx_report(wynik: dict, inputs: dict) -> BytesIO:
     for i in [1, 2, 3, 4, 5]:
         p = add_p(1.5, space_after=0)
         run_txt(p, SYM['alpha'], italic=True); run_sub(p, str(i)); run_txt(p, f" = {wynik[f'alfa{i}']:.2f}")
+    
+    # WARUNEK 0.7 - DOCX
+    if wynik.get('limit_active', False):
+        p = add_p(1.5, space_after=0)
+        run_txt(p, "Warunek 8.4.4(1): ", bold=True)
+        run_txt(p, f"{wynik['iloczyn_235_raw']:.2f} < 0.7 -> przyjęto 0.7")
+
     p = add_p(1.5, space_after=6)
     p.paragraph_format.space_before = Pt(6)
     run_txt(p, SYM['alpha'], italic=True); run_sub(p, "glob"); run_txt(p, " = "); run_txt(p, SYM['alpha'], italic=True); run_sub(p, "1"); run_txt(p, f" {SYM['dot']} "); run_txt(p, SYM['alpha'], italic=True); run_sub(p, "2"); run_txt(p, f" {SYM['dot']} "); run_txt(p, SYM['alpha'], italic=True); run_sub(p, "3"); run_txt(p, f" {SYM['dot']} "); run_txt(p, SYM['alpha'], italic=True); run_sub(p, "4"); run_txt(p, f" {SYM['dot']} "); run_txt(p, SYM['alpha'], italic=True); run_sub(p, "5"); run_txt(p, f" = {wynik['alfa']:.3f}")
 
+    # 4. MINIMALNA - DOCX JEDNOSTKI
     doc.add_heading("4. Minimalna długość zakotwienia", level=1)
     p = add_p(1.5, space_after=6)
-    run_txt(p, "l", italic=True); run_sub(p, "b,min"); run_txt(p, f" = max(0.3l"); run_sub(p, "b,rqd"); run_txt(p, f"; 10{SYM['fi']}; 100 mm) = "); run_txt(p, f"{wynik['L_b_min_mm']:.1f} mm")
+    val1, val2, val3 = 0.3 * wynik['l_b_rqd_mm'], 10.0 * wynik['fi_mm'], 100.0
+    run_txt(p, "l", italic=True); run_sub(p, "b,min"); run_txt(p, f" = max(0.3l"); run_sub(p, "b,rqd"); run_txt(p, f"; 10{SYM['fi']}; 100 mm) = "); 
+    run_txt(p, f"max({val1:.1f} mm; {val2:.1f} mm; {val3} mm) = ") # Dodano 'mm'
+    run_txt(p, f"{wynik['L_b_min_mm']:.1f} mm")
 
     doc.add_heading("5. Obliczenie długości zakotwienia", level=1)
     p = add_p(1.5, space_after=6)
@@ -469,22 +478,21 @@ def StronaDlugoscZakotwienia() -> None:
                 st.write(f"- $\\alpha_4 = {wynik['alfa4']:.2f}$")
                 st.write(f"- $\\alpha_5 = {wynik['alfa5']:.2f}$")
                 
-                # --- NOWOŚĆ: Wyświetlanie limitu 0.7 ---
-                st.write("---")
-                iloczyn = wynik['iloczyn_235_raw']
+                # --- ZMIANA: Ukrywanie komunikatu jeśli OK ---
                 if wynik['limit_active']:
+                    st.write("---")
+                    iloczyn = wynik['iloczyn_235_raw']
                     st.error(f"⚠️ Warunek EC2 8.4.4(1): $\\alpha_2 \\cdot \\alpha_3 \\cdot \\alpha_5 = {iloczyn:.3f} < 0.7$")
                     st.latex(r"\rightarrow \text{Przyjęto: } \alpha_2 \cdot \alpha_3 \cdot \alpha_5 = 0.7")
-                else:
-                    st.success(f"✅ Warunek EC2 8.4.4(1): $\\alpha_2 \\cdot \\alpha_3 \\cdot \\alpha_5 = {iloczyn:.3f} \ge 0.7$")
-                st.write("---")
-
+                    st.write("---")
+                
                 st.latex(rf"\alpha_{{global}} = \alpha_1 \cdot \alpha_2 \cdot \alpha_3 \cdot \alpha_4 \cdot \alpha_5 = \mathbf{{{wynik['alfa']:.3f}}}")
 
                 st.markdown("#### 4. Minimalna długość zakotwienia ($l_{b,min}$)")
                 val_min1 = 0.3 * l_b_rqd_mm
                 val_min2 = 10.0 * fi_mm
-                st.latex(rf"l_{{b,min}} = \max(0.3 \cdot l_{{b,rqd}}; 10\Phi; 100) = \max({val_min1:.1f}; {val_min2:.1f}; 100) = {L_b_min_mm:.1f} \text{{ mm}}")
+                # ZMIANA: Dodano \text{ mm} do latexu
+                st.latex(rf"l_{{b,min}} = \max(0.3 \cdot l_{{b,rqd}}; 10\Phi; 100) = \max({val_min1:.1f} \text{{ mm}}; {val_min2:.1f} \text{{ mm}}; 100 \text{{ mm}}) = {L_b_min_mm:.1f} \text{{ mm}}")
 
                 st.markdown("#### 5. Obliczenie długości zakotwienia ($l_{bd}$)")
                 st.latex(rf"l_{{bd}} = \alpha_{{global}} \cdot l_{{b,rqd}} = {wynik['alfa']:.3f} \cdot {l_b_rqd_mm:.1f} = {L_bd_mm:.1f} \text{{ mm}}")
