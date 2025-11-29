@@ -4,10 +4,6 @@ PROGRAMY/DlugoscZakotwienia.py
 Strona Streamlit do obliczania długości ZAKOTWIENIA prętów zbrojeniowych
 wg PN-EN 1992-1-1 (EC2).
 Wersja: ENGINEERING_REPORT_V17 (FIXED FONTS & ENCODING).
-Zmiany:
-- Usunięto ścieżki do Windows Fonts (C:/Windows/...) powodujące błąd na serwerze.
-- Dodano ładowanie lokalnej czcionki DejaVuSans.ttf (wymaga pliku w folderze PROGRAMY).
-- Zabezpieczono generowanie PDF (encode z 'replace') przed błędem UnicodeEncodeError.
 """
 
 from __future__ import annotations
@@ -31,7 +27,8 @@ from TABLICE.ParametryStali import get_steel_params, list_steel_grades
 
 SCIEZKA_BAZOWA = Path(__file__).resolve().parents[1]
 SCIEZKA_DODATKI = SCIEZKA_BAZOWA / "DODATKI"
-SCIEZKA_PROGRAMY = Path(__file__).parent # Folder, w którym jest ten plik
+# --- FIX: Definiujemy ścieżkę do folderu, w którym jest ten skrypt i czcionka ---
+SCIEZKA_PROGRAMY = Path(__file__).parent 
 
 # --- SYMBOLE UNICODE DLA PDF ---
 SYM = {
@@ -54,19 +51,18 @@ def create_pdf_report(wynik: dict, inputs: dict) -> bytes:
     pdf = FPDF()
     pdf.add_page()
     
-    # --- NAPRAWA CZCIONEK DLA STREAMLIT CLOUD (LINUX) ---
-    # Szukamy czcionki w folderze PROGRAMY obok skryptu
+    # --- FIX: NAPRAWA CZCIONEK (Linux/Streamlit Cloud) ---
+    # Szukamy pliku DejaVuSans.ttf w tym samym folderze co ten skrypt
     font_path = SCIEZKA_PROGRAMY / "DejaVuSans.ttf"
     
     if font_path.exists():
         # Rejestrujemy czcionkę z obsługą Unicode (uni=True)
         pdf.add_font('DejaVu', '', str(font_path), uni=True)
-        # Używamy tej samej czcionki dla pogrubienia (chyba że masz plik DejaVuSans-Bold.ttf)
-        pdf.add_font('DejaVu', 'B', str(font_path), uni=True)
-        pdf.add_font('DejaVu', 'I', str(font_path), uni=True)
+        pdf.add_font('DejaVu', 'B', str(font_path), uni=True) # Używamy tej samej jako Bold (symulacja)
+        pdf.add_font('DejaVu', 'I', str(font_path), uni=True) # Używamy tej samej jako Italic (symulacja)
         main_font = 'DejaVu'
     else:
-        # Fallback - jeśli nie ma pliku .ttf, używamy Ariala (brak polskich znaków w starej wersji fpdf)
+        # Fallback - jeśli nie wgrałeś pliku .ttf, użyje Ariala (ale polskie znaki mogą nie działać)
         main_font = 'Arial'
 
     LINE_H = 6
@@ -171,8 +167,8 @@ def create_pdf_report(wynik: dict, inputs: dict) -> bytes:
     pdf.set_y(pdf.get_y() + 3)
     build_line([("Wymagana długość zakotwienia:  l", 'txt'), ("bd,req", 'sub'), (f" = {wynik['L_req_mm']:.1f} mm", 'bold')], MARGIN_LEFT + 5)
 
-    # NAPRAWA BŁĘDU: Używamy 'replace' aby uniknąć UnicodeEncodeError przy zapisie
-    # Jeśli czcionka jest poprawnie załadowana, replace nie będzie potrzebny, ale chroni przed crashem
+    # --- FIX: ZABEZPIECZENIE PRZED BŁĘDEM KODOWANIA ---
+    # Używamy 'replace', aby zamienić nieznane znaki na '?' zamiast wyrzucać błąd
     return pdf.output(dest='S').encode('latin-1', 'replace')
 
 
